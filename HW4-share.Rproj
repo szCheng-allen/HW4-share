@@ -1,0 +1,74 @@
+# load all the libraries to use
+install.packages("sf")
+install.packages("here")
+install.packages("terra")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("tmap")
+install.packages("tidyverse")
+install.packages("countrycode")
+install.packages("ggplot2")
+
+library(sf)
+library(here)
+library(terra)
+library(dplyr)
+library(ggplot2)
+library(tmap)
+library(tidyverse)
+library(ggplot2)
+library(countrycode)
+
+
+# load the csv
+index_data_df <- read.csv("C:/Users/Administrator/Desktop/HDR23-24_Composite_indices_complete_time_series.csv")
+
+# load the geojson
+world_gdf <- st_read("C:/Users/Administrator/Desktop/World_Countries_(Generalized)_9029012925078512962.geojson")
+non_null_index_data_df <- index_data_df %>%
+  filter(!is.na(gii_2010)) %>%
+  filter(!is.na(gii_2019))
+
+#Sort out the data of CSV
+columns_to_keep <- c('iso3','country','hdicode','gii_2010',	'gii_2019')
+
+index_data_df <- index_data_df %>% dplyr::select(all_of(columns_to_keep))
+
+non_null_index_data_df <- index_data_df %>% filter(!is.na(gii_2010)) %>% filter(!is.na(gii_2019))
+
+country_level_index_data_df <- non_null_index_data_df %>% filter(!is.na(hdicode))
+
+world_gdf <- world_gdf %>%
+  mutate(iso3 = countrycode(ISO, origin = "iso2c", destination = "iso3c"))
+
+#Draw images of 2010,2019 and their differences
+
+world_w_gii_gdf <- world_gdf %>% left_join(country_level_index_data_df, by = c("iso3"))
+world_w_gii_gdf["gii_diff_2010_and_2019"] <- world_w_gii_gdf$gii_2019 - world_w_gii_gdf$gii_2010
+
+# Inspect
+world_w_gii_gdf <- world_w_gii_gdf %>%
+  mutate(gii_diff_2010_and_2019 = gii_2019 - gii_2010)
+
+
+ggplot(data = world_w_gii_gdf) +
+  geom_sf(aes(fill = gii_2010), color = "white", size = 0.1) +
+  scale_fill_viridis_c(option = "magma", name = "GII 2010") +
+  labs(title = "Global Gender Inequality Index (GII) 2010") +
+  theme_minimal()
+
+
+ggplot(data = world_w_gii_gdf) +
+  geom_sf(aes(fill = gii_2019), color = "white", size = 0.1) +
+  scale_fill_viridis_c(option = "plasma", name = "GII 2019") +
+  labs(title = "Global Gender Inequality Index (GII) 2019") +
+  theme_minimal()
+
+
+ggplot(data = world_w_gii_gdf) +
+  geom_sf(aes(fill = gii_diff_2010_and_2019), color = "white", size = 0.1) +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
+                       name = "GII Difference (2019 - 2010)") +
+  labs(title = "Difference in Gender Inequality Index (GII) between 2010 and 2019") +
+  theme_minimal()
+
